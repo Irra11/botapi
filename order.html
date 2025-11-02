@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NhoyHub Order System</title>
+    <link rel="stylesheet" href="api.css"> 
+    <style>
+        /* Basic styles needed to make the code below work */
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; color: #333; margin: 0; padding: 0; }
+        .container { max-width: 1200px; margin: 20px auto; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .header h1 { margin: 0; color: #333; }
+        .header-actions button { margin-left: 10px; }
+        .filters { display: flex; gap: 20px; margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 4px; background: #f9f9f9; }
+        .filter-group label { display: block; font-weight: bold; margin-bottom: 5px; }
+        .filters input, .filters select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 100%; box-sizing: border-box; }
+        
+        /* Buttons */
+        .btn { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: background-color 0.2s; }
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-primary:hover { background-color: #0056b3; }
+        .btn-secondary { background-color: #6c757d; color: white; }
+        .btn-secondary:hover { background-color: #5a6268; }
+        .btn-success { background-color: #28a745; color: white; }
+        .btn-success:hover { background-color: #1e7e34; }
+        .btn-danger { background-color: #dc3545; color: white; }
+        .btn-danger:hover { background-color: #bd2130; }
+        .btn-small { padding: 5px 10px; font-size: 0.8em; margin: 3px; }
+
+        /* Orders Grid and Cards */
+        .orders-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+        .order-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: transform 0.2s; }
+        .order-card:hover { transform: translateY(-3px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .order-image { width: 100%; height: 200px; object-fit: cover; }
+        .order-content { padding: 15px; }
+        .order-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        .order-name { font-size: 1.1em; font-weight: bold; }
+        .order-price { color: #28a745; font-size: 1.2em; font-weight: bold; }
+        .order-udid { font-size: 0.85em; color: #666; margin-bottom: 10px; }
+        .order-status { display: inline-block; padding: 4px 8px; border-radius: 12px; font-size: 0.8em; font-weight: bold; }
+        .status-pending { background-color: #fff3cd; color: #856404; }
+        .status-approved { background-color: #d4edda; color: #155724; }
+        .status-rejected { background-color: #f8d7da; color: #721c24; }
+        .order-actions { margin-top: 10px; display: flex; justify-content: flex-end; gap: 5px; }
+
+        /* Pagination */
+        .pagination { display: flex; justify-content: center; margin-top: 20px; gap: 5px; }
+        .page-btn { background-color: #f8f9fa; border: 1px solid #dee2e6; color: #007bff; padding: 8px 12px; cursor: pointer; border-radius: 4px; transition: background-color 0.2s; }
+        .page-btn:hover:not(:disabled) { background-color: #e2e6ea; }
+        .page-btn.active { background-color: #007bff; color: white; border-color: #007bff; }
+        .page-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        /* Modals */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); }
+        .modal.active { display: block; }
+        .modal-content { background-color: #fefefe; margin: 5% auto; padding: 30px; border-radius: 8px; width: 90%; max-width: 500px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }
+        .close-btn { color: #aaa; font-size: 28px; font-weight: bold; text-decoration: none; }
+        .close-btn:hover, .close-btn:focus { color: #000; text-decoration: none; cursor: pointer; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .form-group input[type="file"] { padding: 5px; }
+        
+        /* Alerts */
+        #alertContainer { position: fixed; top: 10px; right: 10px; width: 300px; z-index: 1001; }
+        .alert { padding: 15px; margin-bottom: 10px; border-radius: 4px; opacity: 0.95; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .alert-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .alert-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        
+        /* Admin Panel */
+        .admin-panel { display: none; padding: 20px; background: #333; margin-top: 20px; border-radius: 8px; color: white; }
+        .admin-panel.active { display: block; }
+        .config-section h3 { color: white; border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 20px; }
+        .config-section .form-group label { color: #ddd; }
+        .config-section input { background: #444; color: white; border: 1px solid #555; }
+        #esignImages > div { border: 1px solid #444; padding: 10px; border-radius: 4px; margin-top: 10px; }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛍️ NhoyHub Orders</h1>
+            <div class="header-actions">
+                <button class="btn btn-primary" id="newOrderBtn">+ New Order</button>
+                <button class="btn btn-secondary" id="loginBtn">Admin Login</button>
+                <button class="btn btn-danger" id="logoutBtn" style="display: none;">Logout</button>
+                <button class="btn btn-secondary" id="configBtn" style="display: none;">⚙️ Config</button>
+            </div>
+        </div>
+
+        <div id="alertContainer"></div>
+
+        <div class="filters">
+            <div class="filter-group">
+                <label>Search</label>
+                <input type="text" id="searchInput" placeholder="Name or UDID...">
+            </div>
+            <div class="filter-group">
+                <label>Status</label>
+                <select id="statusFilter">
+                    <option value="">All Status</option>
+                    <option value="pending">Pending</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Items per page</label>
+                <select id="pageSizeSelect">
+                    <option value="12">12</option>
+                    <option value="24">24</option>
+                    <option value="48">48</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="ordersContainer">
+            <div class="loading">Loading orders...</div>
+        </div>
+
+        <div class="pagination" id="pagination"></div>
+
+        <div class="admin-panel" id="adminPanel">
+            <div class="config-section">
+                <h3>🖼️ Configuration</h3>
+                <div class="form-group">
+                    <label>Public Image URL (shown to non-admins)</label>
+                    <input type="url" id="publicImageUrl" placeholder="https://...">
+                    <button class="btn btn-primary btn-small" style="margin-top: 10px;" onclick="updatePublicImage()">Update Public Image</button>
+                </div>
+                <div class="form-group">
+                    <label>Esign Images (1-5)</label>
+                    <div id="esignImages"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="newOrderModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Create New Order</h2>
+                <button class="close-btn" onclick="closeModal('newOrderModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="newOrderForm">
+                    <div class="form-group">
+                        <label>Name (Include price as $XX)</label>
+                        <input type="text" name="name" required placeholder="iPhone 15 Pro $999">
+                    </div>
+                    <div class="form-group">
+                        <label>UDID</label>
+                        <input type="text" name="udid" required placeholder="00000000-0000000000000000">
+                    </div>
+                    <div class="form-group">
+                        <label>Image</label>
+                        <input type="file" name="image" accept="image/*" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Submit Order</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="editOrderModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Edit Order</h2>
+                <button class="close-btn" onclick="closeModal('editOrderModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="editOrderForm">
+                    <input type="hidden" name="orderId">
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label>UDID</label>
+                        <input type="text" name="udid" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select name="status" required>
+                            <option value="pending">Pending</option>
+                            <option value="approved">Approved</option>
+                            <option value="rejected">Rejected</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Download Link</label>
+                        <input type="url" name="download_link" placeholder="https://...">
+                    </div>
+                    <div class="form-group">
+                        <label>Change Image (optional)</label>
+                        <input type="file" name="image" accept="image/*">
+                    </div>
+                    <button type="submit" class="btn btn-success" style="width: 100%;">Update Order</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="loginModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Admin Login</h2>
+                <button class="close-btn" onclick="closeModal('loginModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label>Username (admin)</label>
+                        <input type="text" name="username" required value="admin">
+                    </div>
+                    <div class="form-group">
+                        <label>Password (password123)</label>
+                        <input type="password" name="password" required value="password123">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Login</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://127.0.0.1:8000'; 
+        let adminToken = localStorage.getItem('adminToken');
+        let currentPage = 1;
+        let pageSize = 12;
+        let currentStatus = '';
+        let currentSearch = '';
+
+        // --- Initialization and Event Listeners ---
+        document.addEventListener('DOMContentLoaded', () => {
+            updateUI();
+            loadOrders();
+            
+            document.getElementById('searchInput').addEventListener('input', debounce(() => {
+                currentSearch = document.getElementById('searchInput').value;
+                currentPage = 1;
+                loadOrders();
+            }, 500));
+            
+            document.getElementById('statusFilter').addEventListener('change', () => {
+                currentStatus = document.getElementById('statusFilter').value;
+                currentPage = 1;
+                loadOrders();
+            });
+            
+            document.getElementById('pageSizeSelect').addEventListener('change', () => {
+                pageSize = parseInt(document.getElementById('pageSizeSelect').value);
+                currentPage = 1;
+                loadOrders();
+            });
+
+            document.getElementById('newOrderBtn').addEventListener('click', () => { openModal('newOrderModal'); });
+            document.getElementById('loginBtn').addEventListener('click', () => { openModal('loginModal'); });
+            document.getElementById('logoutBtn').addEventListener('click', logout);
+            document.getElementById('configBtn').addEventListener('click', toggleAdminPanel);
+
+            document.getElementById('newOrderForm').addEventListener('submit', createNewOrder);
+            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+            document.getElementById('editOrderForm').addEventListener('submit', handleEditOrder);
+        });
+
+        // --- Utility Functions ---
+
+        function debounce(func, wait) {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), wait);
+            };
+        }
+
+        function showAlert(message, type) {
+            const container = document.getElementById('alertContainer');
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.innerHTML = `<strong>${type.toUpperCase()}:</strong> ${message}`;
+            container.prepend(alertDiv); // Prepend so new alerts are on top
+
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
+        }
+
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        function updateUI() {
+            const isAdmin = !!adminToken;
+            document.getElementById('loginBtn').style.display = isAdmin ? 'none' : 'inline-flex';
+            document.getElementById('logoutBtn').style.display = isAdmin ? 'inline-flex' : 'none';
+            document.getElementById('configBtn').style.display = isAdmin ? 'inline-flex' : 'none';
+            
+            if (!isAdmin) {
+                document.getElementById('adminPanel').classList.remove('active');
+            }
+        }
+        
+        function logout() {
+            localStorage.removeItem('adminToken');
+            adminToken = null;
+            updateUI();
+            loadOrders();
+            showAlert('Logged out successfully', 'success');
+        }
+        
+        async function toggleAdminPanel() {
+            const panel = document.getElementById('adminPanel');
+            panel.classList.toggle('active');
+            
+            if (panel.classList.contains('active')) {
+                await loadConfig();
+            }
+        }
+
+        // --- API & Data Handling ---
+
+        async function fetchAPI(url, options = {}) {
+            const headers = options.headers || {};
+            if (adminToken) {
+                headers['Authorization'] = `Bearer ${adminToken}`;
+            }
+            
+            const response = await fetch(url, { ...options, headers });
+
+            if (!response.ok) {
+                // Try to parse JSON error message
+                let detail = `Error ${response.status}: Failed API call.`;
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.includes("application/json")) {
+                    const errorData = await response.json();
+                    detail = errorData.detail || detail;
+                }
+                showAlert(detail, 'error');
+                throw new Error(detail);
+            }
+            return response;
+        }
+
+        async function loadOrders() {
+            document.getElementById('ordersContainer').innerHTML = '<div class="loading">Loading orders...</div>';
+            try {
+                const params = new URLSearchParams({
+                    page: currentPage,
+                    page_size: pageSize
+                });
+                
+                if (currentStatus) params.append('status', currentStatus);
+                if (currentSearch) params.append('q', currentSearch);
+
+                const response = await fetchAPI(`${API_URL}/orders?${params}`);
+                const data = await response.json();
+
+                renderOrders(data.items);
+                renderPagination(data);
+            } catch (error) {
+                // Specific message if API is unreachable (network error)
+                if (error.message.includes("Failed to fetch")) {
+                     document.getElementById('ordersContainer').innerHTML = `<div class="empty-state"><h3>Connection Error</h3><p>Could not connect to the API at ${API_URL}. Is your backend running?</p></div>`;
+                     showAlert('Connection Error: Is the backend server running?', 'error');
+                } else {
+                     document.getElementById('ordersContainer').innerHTML = `<div class="empty-state"><h3>Error Loading Orders</h3><p>See console for details.</p></div>`;
+                }
+                console.error('API Error:', error);
+            }
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData); 
+
+            try {
+                const response = await fetchAPI(`${API_URL}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams(data),
+                });
+
+                const loginData = await response.json();
+                adminToken = loginData.access_token; 
+                localStorage.setItem('adminToken', adminToken);
+                
+                showAlert('Logged in successfully!', 'success');
+                closeModal('loginModal');
+                e.target.reset();
+                updateUI();
+                loadOrders();
+            } catch (error) {
+                // Error handling is inside fetchAPI
+            }
+        }
+
+        async function createNewOrder(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            
+            try {
+                const response = await fetchAPI(`${API_URL}/orders`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    showAlert('Order created successfully!', 'success');
+                    closeModal('newOrderModal');
+                    e.target.reset();
+                    loadOrders();
+                } 
+            } catch (error) {
+                // Error handling is inside fetchAPI
+            }
+        }
+        
+        async function deleteOrder(id) {
+            if (!adminToken) {
+                showAlert('You must be logged in to delete orders.', 'error');
+                return;
+            }
+            if (!confirm('Are you sure you want to delete this order?')) return;
+
+            try {
+                await fetchAPI(`${API_URL}/orders/${id}`, { method: 'DELETE' });
+                showAlert('Order deleted successfully!', 'success');
+                loadOrders();
+            } catch (error) {
+                // Error handling is inside fetchAPI
+            }
+        }
+        
+        // --- Edit Order Functions ---
+        
+        async function editOrder(id) {
+            if (!adminToken) {
+                showAlert('You must be logged in to edit orders.', 'error');
+                return;
+            }
+            try {
+                const response = await fetchAPI(`${API_URL}/orders/${id}`);
+                const order = await response.json();
+
+                const form = document.getElementById('editOrderForm');
+                form.orderId.value = order.id;
+                form.name.value = order.name;
+                form.udid.value = order.udid;
+                form.status.value = order.status;
+                form.download_link.value = order.download_link || ''; 
+                form.image.value = ''; // Clear file input
+                
+                openModal('editOrderModal');
+            } catch (error) {
+                // Error handling is inside fetchAPI
+            }
+        }
+
+        async function handleEditOrder(e) {
+            e.preventDefault();
+            const form = e.target;
+            const formData = new FormData(form);
+            const orderId = formData.get('orderId');
+            
+            // Fix: If the image field is empty, remove it from the FormData 
+            // so FastAPI doesn't try to process an empty file upload.
+            const imageFile = formData.get('image');
+            if (!imageFile || !imageFile.name) {
+                formData.delete('image'); 
+            }
+
+            try {
+                await fetchAPI(`${API_URL}/orders/${orderId}`, {
+                    method: 'PUT',
+                    body: formData
+                });
+
+                showAlert('Order updated successfully!', 'success');
+                closeModal('editOrderModal');
+                loadOrders();
+            } catch (error) {
+                // Error handling is inside fetchAPI
+            }
+        }
+
+
+        // --- Render Functions ---
+
+        function renderOrders(orders) {
+            const container = document.getElementById('ordersContainer');
+            
+            if (orders.length === 0) {
+                container.innerHTML = `<div class="empty-state"><h3>No Orders Found</h3><p>There are no orders matching your criteria.</p></div>`;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="orders-grid">
+                    ${orders.map(order => {
+                        return `
+                        <div class="order-card">
+                            <img src="${API_URL}${order.image_url}" alt="${order.name}" class="order-image" onerror="this.src='https://via.placeholder.com/300x200/667eea/ffffff?text=No+Image'">
+                            <div class="order-content">
+                                <div class="order-header">
+                                    <div class="order-name">${order.name}</div>
+                                    <div class="order-price">$${order.price}</div>
+                                </div>
+                                <div class="order-udid">ID: ${order.id} | UDID: ${order.udid.substring(0, 15)}...</div>
+                                <span class="order-status status-${order.status}">${order.status.toUpperCase()}</span>
+                                <div class="order-date">${new Date(order.created_at * 1000).toLocaleDateString()}</div>
+                                ${adminToken ? `
+                                    <div class="order-actions">
+                                        ${order.download_link && order.download_link !== '#' ? `
+                                            <a href="${order.download_link}" class="btn btn-primary btn-small" onclick="event.stopPropagation()" target="_blank">Download</a>
+                                        ` : ''}
+                                        <button class="btn btn-success btn-small" onclick="event.stopPropagation(); editOrder(${order.id})">Edit</button>
+                                        <button class="btn btn-danger btn-small" onclick="event.stopPropagation(); deleteOrder(${order.id})">Delete</button>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    `;}).join('')}
+                </div>
+            `;
+        }
+
+        function renderPagination(data) {
+            const container = document.getElementById('pagination');
+            const totalPages = Math.ceil(data.total / data.page_size);
+            
+            if (totalPages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+
+            let html = `
+                <button class="page-btn" ${data.page === 1 ? 'disabled' : ''} onclick="changePage(${data.page - 1})">Previous</button>
+            `;
+
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === 1 || i === totalPages || (i >= data.page - 2 && i <= data.page + 2)) {
+                    html += `<button class="page-btn ${i === data.page ? 'active' : ''}" onclick="changePage(${i})">${i}</button>`;
+                } else if (i === data.page - 3 || i === data.page + 3) {
+                    html += `<span style="color: black; padding: 10px;">...</span>`;
+                }
+            }
+
+            html += `
+                <button class="page-btn" ${data.page === totalPages ? 'disabled' : ''} onclick="changePage(${data.page + 1})">Next</button>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        function changePage(page) {
+            currentPage = page;
+            loadOrders();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+
+        // --- Config Functions ---
+
+        async function loadConfig() {
+            try {
+                const response = await fetchAPI(`${API_URL}/config`);
+                const config = await response.json();
+
+                document.getElementById('publicImageUrl').value = config.public_image_url || '';
+
+                let esignHtml = '';
+                for (let i = 1; i <= 5; i++) {
+                    const key = `esign_image_${i}`;
+                    esignHtml += `
+                        <div style="margin-bottom: 15px;">
+                            <label>Esign Image ${i}</label>
+                            <div style="display: flex; gap: 10px;">
+                                <input type="url" id="esign${i}" value="${config[key] || ''}" style="flex: 1;">
+                                <button class="btn btn-primary btn-small" onclick="updateEsignImage(${i})">Update</button>
+                            </div>
+                        </div>
+                    `;
+                }
+                document.getElementById('esignImages').innerHTML = esignHtml;
+            } catch (error) {
+                // Error handling in fetchAPI
+            }
+        }
+
+        async function updatePublicImage() {
+            const url = document.getElementById('publicImageUrl').value;
+            
+            try {
+                await fetchAPI(`${API_URL}/config/public`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ public_image_url: url })
+                });
+
+                showAlert('Public image URL updated successfully!', 'success');
+            } catch (error) {
+                // Error handling in fetchAPI
+            }
+        }
+
+        async function updateEsignImage(index) {
+            const url = document.getElementById(`esign${index}`).value;
+            
+            try {
+                await fetchAPI(`${API_URL}/config/esign/${index}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: url })
+                });
+
+                showAlert(`Esign image ${index} updated successfully!`, 'success');
+            } catch (error) {
+                // Error handling in fetchAPI
+            }
+        }
+    </script>
+</body>
+</html>
